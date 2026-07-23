@@ -11,7 +11,7 @@ class AuditLogController extends Controller
     public function index(Request $request)
     {
         $tenantId = $request->user()->tenant_id ?? $request->user()->id;
-        $logs = Audit::where('tenant_id', $tenantId)->latest()->paginate(20);
+        $logs = Audit::with('user')->where('tenant_id', $tenantId)->latest()->paginate(20);
         return response()->json($logs);
     }
 }

@@ -36,9 +36,38 @@ export default function ActivityLogPage() {
     fetchLogs(1);
   }, []);
 
-  const formatValue = (val) => {
+  const formatKey = (key) => {
+    const map = {
+      is_available: 'Availability',
+      price: 'Price',
+      name: 'Name',
+      description: 'Description',
+      category_id: 'Category',
+      image_path: 'Image',
+      brand_color: 'Brand Color',
+      currency: 'Currency'
+    };
+    if (map[key]) return map[key];
+    return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const formatValue = (key, val) => {
+    if (key === 'is_available') {
+      return val == 1 || val === true || val === 'true' || val === '1' ? 'Available' : 'Unavailable';
+    }
     if (typeof val === 'object' && val !== null) return JSON.stringify(val);
+    if (val === null || val === '') return 'Empty';
     return String(val);
+  };
+
+  const formatModel = (type) => {
+    const model = type.split('\\').pop();
+    const map = {
+      MenuItem: 'Menu Item',
+      MenuCategory: 'Menu Category',
+      TenantSetting: 'Restaurant Setting'
+    };
+    return map[model] || model;
   };
 
   return (
@@ -65,7 +94,7 @@ export default function ActivityLogPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-900 dark:text-white">
-                        User #{log.user_id} {log.event} a {log.auditable_type.split('\\').pop()}
+                        {log.user?.name || log.user?.email || 'User'} {log.event} a {formatModel(log.auditable_type)}
                       </p>
                       <p className="text-xs text-slate-500 mt-1">
                         {new Date(log.created_at).toLocaleString()}
@@ -81,10 +110,10 @@ export default function ActivityLogPage() {
                     <div className="space-y-2">
                       {Object.keys(log.new_values).map(key => (
                         <div key={key} className="flex items-center gap-2 text-sm bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
-                          <span className="font-mono text-xs text-slate-400">{key}:</span>
-                          <span className="text-red-500 line-through">{formatValue(log.old_values[key])}</span>
-                          <ArrowRight size={14} className="text-slate-400" />
-                          <span className="text-green-600">{formatValue(log.new_values[key])}</span>
+                          <span className="font-semibold text-xs text-slate-600 dark:text-slate-400 min-w-[80px]">{formatKey(key)}:</span>
+                          <span className="text-red-500 line-through">{formatValue(key, log.old_values[key])}</span>
+                          <ArrowRight size={14} className="text-slate-400 mx-1" />
+                          <span className="text-green-600 font-medium">{formatValue(key, log.new_values[key])}</span>
                         </div>
                       ))}
                     </div>

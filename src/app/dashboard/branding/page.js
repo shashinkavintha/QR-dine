@@ -14,6 +14,7 @@ export default function BrandingSettingsPage() {
   const [secondaryColor, setSecondaryColor] = useState('#1e293b'); // Slate 800
   const [currency, setCurrency] = useState('$');
   const [themeMode, setThemeMode] = useState('light');
+  const [googleReviewUrl, setGoogleReviewUrl] = useState('');
   
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
@@ -44,6 +45,7 @@ export default function BrandingSettingsPage() {
         setBannerUrl(settings.banner_url || null);
         setCurrency(settings.currency || '$');
         setThemeMode(settings.theme_mode || 'light');
+        setGoogleReviewUrl(settings.google_review_url || '');
 
         const menu = await menuRes.json();
         setMenuCategories(menu || []);
@@ -80,6 +82,7 @@ export default function BrandingSettingsPage() {
       formData.append('secondary_color', secondaryColor);
       formData.append('currency', currency);
       formData.append('theme_mode', themeMode);
+      formData.append('google_review_url', googleReviewUrl);
       if (logoFile) formData.append('logo', logoFile);
       if (bannerFile) formData.append('banner', bannerFile);
 
@@ -89,8 +92,8 @@ export default function BrandingSettingsPage() {
       });
       
       const data = await res.json();
-      setLogoUrl(data.logo_url);
-      setBannerUrl(data.banner_url);
+      setLogoUrl(data.logo_url || logoUrl);
+      setBannerUrl(data.banner_url || bannerUrl);
       toast.success('Settings saved successfully!');
     } catch (error) {
       console.error(error);
@@ -130,6 +133,18 @@ export default function BrandingSettingsPage() {
                 className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors text-slate-900 dark:text-slate-100 shadow-sm" 
                 placeholder="e.g. Grand Plaza Hotel"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Google / TripAdvisor Review Link (google_review_url)</label>
+              <input 
+                type="url" 
+                value={googleReviewUrl}
+                onChange={e => setGoogleReviewUrl(e.target.value)}
+                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors text-slate-900 dark:text-slate-100 shadow-sm" 
+                placeholder="e.g. https://g.page/r/your-google-review-link"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Direct review URL shown to customers submitting positive 4-5 star feedback.</p>
             </div>
 
             <div>

@@ -21,6 +21,10 @@ class TenantMiddleware
             Config::set('tenant.id', $tenantId);
         }
 
-        return $next($request);
+        try {
+            return $next($request);
+        } finally {
+            Config::set('tenant.id', null);
+        }
     }
 }

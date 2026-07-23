@@ -252,6 +252,7 @@ class SuperAdminController extends Controller
             'hero_mockup_image_phone' => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:2048',
             'hero_mockup_image_tablet' => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:2048',
             'hero_mockup_image_laptop' => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:2048',
+            'hero_bg_image' => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:102400',
         ]);
 
         // Handle file uploads explicitly for different mockups
@@ -270,10 +271,15 @@ class SuperAdminController extends Controller
             $url = Storage::url($path);
             SystemSetting::updateOrCreate(['key' => 'hero_mockup_image_laptop_url'], ['value' => $url]);
         }
+        if ($request->hasFile('hero_bg_image')) {
+            $path = $request->file('hero_bg_image')->store('settings', 'public');
+            $url = Storage::url($path);
+            SystemSetting::updateOrCreate(['key' => 'hero_bg_image'], ['value' => $url]);
+        }
 
         // Process other key-value pairs (ignoring the file inputs)
         \Log::info("Saving settings", $request->all());
-        foreach($request->except(['hero_mockup_image_phone', 'hero_mockup_image_tablet', 'hero_mockup_image_laptop']) as $key => $value) {
+        foreach($request->except(['hero_mockup_image_phone', 'hero_mockup_image_tablet', 'hero_mockup_image_laptop', 'hero_bg_image']) as $key => $value) {
             SystemSetting::updateOrCreate(['key' => $key], ['value' => $value]);
         }
         return response()->json(['message' => 'Settings updated']);

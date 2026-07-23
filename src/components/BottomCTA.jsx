@@ -18,7 +18,7 @@ export default function BottomCTA() {
   const rotateRight = useTransform(scrollYProgress, [0, 1], [45, 0]);
 
   return (
-    <section ref={containerRef} className="py-16 md:py-20 px-6 lg:px-12 bg-slate-900 relative overflow-hidden">
+    <section ref={containerRef} className="py-16 md:py-20 px-6 lg:px-12 bg-slate-50 relative overflow-hidden border-t border-slate-100">
       
       {/* Decorative Parallax Background Elements */}
       <motion.div 
@@ -31,18 +31,17 @@ export default function BottomCTA() {
       ></motion.div>
 
       <div className="max-w-4xl mx-auto text-center relative z-10 flex flex-col items-center">
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4 text-white tracking-tight leading-tight">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4 text-slate-900 tracking-tight leading-tight">
           Ready to digitize your restaurant? <br className="hidden md:block"/> Sign up for free today.
         </h2>
-        <p className="text-base md:text-lg text-slate-400 mb-8 max-w-2xl mx-auto font-medium">
+        <p className="text-base md:text-lg text-slate-600 mb-8 max-w-2xl mx-auto font-medium">
           Join the modern restaurants that are boosting sales and saving time. No credit card required.
         </p>
         <Link 
           href="/register"
-          className="group relative inline-block px-10 py-5 bg-gradient-to-r from-orange-500 to-rose-500 rounded-full font-bold text-xl text-white shadow-[0_0_50px_-10px_rgba(249,115,22,0.6)] hover:shadow-[0_0_80px_-15px_rgba(249,115,22,0.8)] hover:scale-105 transition-all duration-300 overflow-hidden"
+          className="inline-block px-10 py-4 bg-orange-500 rounded-full font-bold text-lg md:text-xl text-white hover:bg-orange-600 transition-all shadow-md hover:shadow-lg"
         >
-          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-          <span className="relative z-10">Sign up for free today</span>
+          Sign up for free today
         </Link>
       </div>
     </section>

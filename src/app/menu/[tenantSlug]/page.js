@@ -2,9 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Info, X, Plus, ShoppingBag, Loader2, Image as ImageIcon, Trash2, ArrowRight, CheckCircle2, Clock, MapPin, ChefHat, Ban } from 'lucide-react';
+import { Search, Info, X, Plus, ShoppingBag, Loader2, Image as ImageIcon, Trash2, ArrowRight, CheckCircle2, Clock, MapPin, ChefHat, Ban, Bell, Star, Sparkles } from 'lucide-react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { toast, Toaster } from 'react-hot-toast';
+
+import LanguageSelector from '@/components/menu/LanguageSelector';
+import CallWaiterModal from '@/components/menu/CallWaiterModal';
+import ReviewModal from '@/components/menu/ReviewModal';
+import UpsellDrawer from '@/components/menu/UpsellDrawer';
 
 export default function CustomerMenuSPA() {
   const params = useParams(); // params.tenantSlug
@@ -17,6 +22,8 @@ export default function CustomerMenuSPA() {
   const [tenantData, setTenantData] = useState(null);
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
+  const [rawCategories, setRawCategories] = useState([]);
+  const [rawItems, setRawItems] = useState([]);
   
   const [activeCategory, setActiveCategory] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -34,6 +41,19 @@ export default function CustomerMenuSPA() {
   const [activeOrderDetails, setActiveOrderDetails] = useState(null);
   const [isOrderTrackingOpen, setIsOrderTrackingOpen] = useState(false);
   const [isOrderBannerDismissed, setIsOrderBannerDismissed] = useState(false);
+
+  // M4 States
+  const [currentLang, setCurrentLang] = useState('en');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationCache, setTranslationCache] = useState({});
+  const [isWaiterModalOpen, setIsWaiterModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [upsellState, setUpsellState] = useState({
+    isOpen: false,
+    sourceItemName: '',
+    suggestedItem: null
+  });
+  const [cartUpsellItems, setCartUpsellItems] = useState([]);
 
   const handleSelectItem = (item) => {
     setSelectedItem(item);
@@ -67,6 +87,9 @@ export default function CustomerMenuSPA() {
           setActiveOrderDetails(data.order);
           
           if (['served', 'completed', 'cancelled'].includes(data.order.status)) {
+            if (data.order.status === 'completed' || data.order.status === 'served') {
+              setIsReviewModalOpen(true);
+            }
             localStorage.removeItem('active_order_id');
             timeoutId = setTimeout(() => {
               setActiveOrderId(null);
@@ -88,6 +111,9 @@ export default function CustomerMenuSPA() {
           .listen('.App\\Events\\OrderStatusUpdated', (e) => {
             setActiveOrderDetails(e.order);
             if (['served', 'completed', 'cancelled'].includes(e.order.status)) {
+              if (e.order.status === 'completed' || e.order.status === 'served') {
+                setIsReviewModalOpen(true);
+              }
               localStorage.removeItem('active_order_id');
               timeoutId = setTimeout(() => {
                 setActiveOrderId(null);
@@ -114,7 +140,6 @@ export default function CustomerMenuSPA() {
 
   useEffect(() => {
     let isFirstLoad = true;
-    const selectedItemRef = { current: null };
     
     const fetchMenu = async () => {
       try {
@@ -131,14 +156,19 @@ export default function CustomerMenuSPA() {
         setError(null);
         setTenantData(data.branding);
         
-        // Always update categories & items on first load, then only update branding/error on poll
+        // Always update categories & items on first load
         if (isFirstLoad) {
           const allItems = [];
           data.menu?.forEach(cat => {
             if (cat.items) cat.items.forEach(item => allItems.push(item));
           });
+          setRawCategories(data.menu || []);
+          setRawItems(allItems);
           setCategories(data.menu || []);
           setItems(allItems);
+          setTranslationCache({
+            en: { categories: data.menu || [], items: allItems }
+          });
           if (data.menu && data.menu.length > 0) {
             setActiveCategory(data.menu[0].id);
           }
@@ -164,6 +194,67 @@ export default function CustomerMenuSPA() {
     }
   }, [activeCategory, searchQuery]);
 
+  const handleLanguageChange = async (targetLang) => {
+    if (targetLang === currentLang) return;
+
+    if (translationCache[targetLang]) {
+      setCategories(translationCache[targetLang].categories);
+      setItems(translationCache[targetLang].items);
+      setCurrentLang(targetLang);
+      toast.success(`Translated to ${targetLang.toUpperCase()}`);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const texts = [];
+      rawCategories.forEach(cat => texts.push(cat.name));
+      rawItems.forEach(item => {
+        texts.push(item.name);
+        texts.push(item.description || '');
+      });
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/public/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts, target_lang: targetLang })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const translations = data.translations || data.translated_texts || [];
+        let idx = 0;
+
+        const translatedCategories = rawCategories.map(cat => ({
+          ...cat,
+          name: translations[idx++] || cat.name
+        }));
+
+        const translatedItems = rawItems.map(item => ({
+          ...item,
+          name: translations[idx++] || item.name,
+          description: translations[idx++] || item.description
+        }));
+
+        setTranslationCache(prev => ({
+          ...prev,
+          [targetLang]: { categories: translatedCategories, items: translatedItems }
+        }));
+        setCategories(translatedCategories);
+        setItems(translatedItems);
+        setCurrentLang(targetLang);
+        toast.success(`Translated to ${targetLang.toUpperCase()}`);
+      } else {
+        toast.error('Translation failed.');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Error translating menu.');
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const toggleModifier = (option) => {
     const exists = selectedModifiers.find(m => m.name === option.name);
     if (exists) {
@@ -173,8 +264,9 @@ export default function CustomerMenuSPA() {
     }
   };
 
-  const addToCart = () => {
+  const addToCart = async () => {
     if (!selectedItem) return;
+    const itemToAdd = selectedItem;
     const basePrice = selectedPortion ? selectedPortion.price : selectedItem.price;
     const modifiersTotal = selectedModifiers.reduce((acc, mod) => acc + parseFloat(mod.price), 0);
     const cartItem = {
@@ -202,11 +294,90 @@ export default function CustomerMenuSPA() {
         secondary: '#333',
       },
     });
+
+    // R4: Query Upsell Suggestions for the added item
+    try {
+      const tenantId = tenantData?.user_id;
+      if (tenantId && itemToAdd?.id) {
+        let res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/public/upsell-suggestions?tenant_id=${tenantId}&item_ids[]=${itemToAdd.id}`);
+        if (!res.ok) {
+          res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/public/upsell?tenant_id=${tenantId}&item_ids[]=${itemToAdd.id}`);
+        }
+        if (res.ok) {
+          const suggestions = await res.json();
+          if (Array.isArray(suggestions) && suggestions.length > 0) {
+            setUpsellState({
+              isOpen: true,
+              sourceItemName: itemToAdd.name,
+              suggestedItem: suggestions[0]
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch upsell suggestions:', err);
+    }
+  };
+
+  const addToCartFromUpsell = (suggestedItem) => {
+    const cartItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      menu_item_id: suggestedItem.id,
+      name: suggestedItem.name,
+      quantity: 1,
+      unit_price: parseFloat(suggestedItem.price || 0),
+      portion: null,
+      modifiers: [],
+      image_url: suggestedItem.image_url
+    };
+    setCart(prev => [...prev, cartItem]);
+    toast.success(`Added ${suggestedItem.name} to order!`, {
+      style: {
+        borderRadius: '100px',
+        background: '#333',
+        color: '#fff',
+        fontWeight: 'bold',
+      },
+      iconTheme: {
+        primary: '#fff',
+        secondary: '#333',
+      },
+    });
   };
 
   const removeFromCart = (id) => {
     setCart(cart.filter(item => item.id !== id));
   };
+
+  useEffect(() => {
+    const fetchCartUpsells = async () => {
+      const tenantId = tenantData?.user_id;
+      if (!tenantId || cart.length === 0) {
+        setCartUpsellItems([]);
+        return;
+      }
+      try {
+        const itemIds = cart.map(i => i.menu_item_id).filter(Boolean);
+        const query = itemIds.map(id => `item_ids[]=${id}`).join('&');
+        let res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/public/upsell-suggestions?tenant_id=${tenantId}&${query}`);
+        if (!res.ok) {
+          res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/public/upsell?tenant_id=${tenantId}&${query}`);
+        }
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const inCartIds = new Set(cart.map(c => c.menu_item_id));
+            setCartUpsellItems(data.filter(item => !inCartIds.has(item.id)));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch cart upsells:', err);
+      }
+    };
+    if (isCartOpen) {
+      fetchCartUpsells();
+    }
+  }, [cart, isCartOpen, tenantData?.user_id]);
 
   const cartTotal = cart.reduce((total, item) => total + (item.unit_price * item.quantity), 0);
 
@@ -422,20 +593,59 @@ export default function CustomerMenuSPA() {
               </div>
             </div>
 
-            <div className="relative w-full md:w-80 lg:w-96 shrink-0">
-              <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${branding.banner_url ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`} size={20} />
-              <input 
-                type="text" 
-                placeholder="Search for dishes..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full pl-12 pr-4 py-3.5 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-opacity-20 transition-all ${
-                  branding.banner_url 
-                  ? 'bg-white/20 dark:bg-slate-900/40 border border-white/30 text-white placeholder:text-white/70 backdrop-blur-md focus:bg-white/30 dark:focus:bg-slate-900/60' 
-                  : 'bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:bg-white dark:bg-slate-900 focus:border-slate-300 dark:border-slate-600'
-                }`}
-                style={{ '--tw-ring-color': branding.banner_url ? 'white' : branding.primary_color }}
-              />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+              {/* Actions: Language Selector, Call Waiter, Review */}
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <LanguageSelector
+                  currentLang={currentLang}
+                  onLanguageChange={handleLanguageChange}
+                  isTranslating={isTranslating}
+                  bannerUrl={branding.banner_url}
+                />
+
+                <button
+                  onClick={() => setIsWaiterModalOpen(true)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs md:text-sm font-bold border transition-all ${
+                    branding.banner_url
+                      ? 'bg-white/20 dark:bg-slate-900/40 border-white/30 text-white backdrop-blur-md hover:bg-white/30'
+                      : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                  title="Call Waiter / Service Request"
+                >
+                  <Bell size={16} className="text-orange-500" />
+                  <span>Call Waiter</span>
+                </button>
+
+                <button
+                  onClick={() => setIsReviewModalOpen(true)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs md:text-sm font-bold border transition-all ${
+                    branding.banner_url
+                      ? 'bg-white/20 dark:bg-slate-900/40 border-white/30 text-white backdrop-blur-md hover:bg-white/30'
+                      : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                  title="Leave a Review"
+                >
+                  <Star size={16} className="fill-amber-400 text-amber-400" />
+                  <span>Review</span>
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative w-full sm:w-64 md:w-80 shrink-0">
+                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${branding.banner_url ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`} size={20} />
+                <input 
+                  type="text" 
+                  placeholder="Search for dishes..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`w-full pl-12 pr-4 py-3 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-opacity-20 transition-all ${
+                    branding.banner_url 
+                    ? 'bg-white/20 dark:bg-slate-900/40 border border-white/30 text-white placeholder:text-white/70 backdrop-blur-md focus:bg-white/30 dark:focus:bg-slate-900/60' 
+                    : 'bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:bg-white dark:bg-slate-900 focus:border-slate-300 dark:border-slate-600'
+                  }`}
+                  style={{ '--tw-ring-color': branding.banner_url ? 'white' : branding.primary_color }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -553,6 +763,19 @@ export default function CustomerMenuSPA() {
         </main>
       </div>
 
+      {/* Floating Call Waiter Button */}
+      <div className="fixed bottom-6 left-4 sm:left-6 z-40">
+        <button
+          onClick={() => setIsWaiterModalOpen(true)}
+          className="p-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-2xl flex items-center gap-2 font-bold text-sm transition-all hover:scale-105 active:scale-95"
+          style={{ backgroundColor: branding.primary_color }}
+          title="Call Waiter / Service Request"
+        >
+          <Bell size={20} />
+          <span className="hidden sm:inline">Call Waiter</span>
+        </button>
+      </div>
+
       {/* Floating View Order Button */}
       <AnimatePresence>
         {cart.length > 0 && !isCartOpen && (
@@ -560,11 +783,11 @@ export default function CustomerMenuSPA() {
             initial={{ y: 100 }}
             animate={{ y: 0 }}
             exit={{ y: 100 }}
-            className="fixed bottom-6 inset-x-0 w-full max-w-md mx-auto px-4 z-40"
+            className="fixed bottom-6 inset-x-0 w-full max-w-md mx-auto px-4 z-40 flex gap-2"
           >
             <button 
               onClick={() => setIsCartOpen(true)}
-              className="w-full flex items-center justify-between px-6 py-4 rounded-2xl font-bold text-white shadow-2xl shadow-black/20 backdrop-blur-md transition-transform active:scale-95"
+              className="flex-1 flex items-center justify-between px-6 py-4 rounded-2xl font-bold text-white shadow-2xl shadow-black/20 backdrop-blur-md transition-transform active:scale-95"
               style={{ backgroundColor: branding.primary_color }} 
             >
               <div className="flex items-center gap-3">
@@ -581,7 +804,7 @@ export default function CustomerMenuSPA() {
       <AnimatePresence>
         {selectedItem && (
           <>
-            {/* Backdrop - not animated alongside card to prevent Safari glitch */}
+            {/* Backdrop */}
             <motion.div
               key={`item-backdrop-${selectedItem.id}`}
               initial={{ opacity: 0 }}
@@ -592,7 +815,7 @@ export default function CustomerMenuSPA() {
               className="fixed inset-0 z-50"
               style={{ backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
             />
-            {/* Card - separate from backdrop */}
+            {/* Card */}
             <motion.div
               key={`item-card-${selectedItem.id}`}
               initial={{ opacity: 0, y: 50 }}
@@ -614,7 +837,7 @@ export default function CustomerMenuSPA() {
                   <X size={20} />
                 </button>
 
-                {/* ===== SCROLLABLE BODY ===== */}
+                {/* SCROLLABLE BODY */}
                 <div 
                   className="flex-1 overflow-y-auto overflow-x-hidden relative"
                   style={{ WebkitOverflowScrolling: 'touch' }}
@@ -715,7 +938,7 @@ export default function CustomerMenuSPA() {
                   </div>
                 </div>
 
-                {/* ===== FIXED FOOTER ===== */}
+                {/* FIXED FOOTER */}
                 <div 
                   className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-800/50 bg-white dark:bg-slate-900 flex flex-col sm:flex-row gap-4 shrink-0 z-20"
                 >
@@ -807,6 +1030,44 @@ export default function CustomerMenuSPA() {
                       </button>
                     </div>
                   ))
+                )}
+
+                {cart.length > 0 && cartUpsellItems.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Suggested Add-ons
+                      </h3>
+                    </div>
+                    <div className="space-y-3">
+                      {cartUpsellItems.map(sugItem => (
+                        <div key={sugItem.id} className="flex items-center justify-between p-3 rounded-2xl bg-orange-50/50 dark:bg-slate-800/50 border border-orange-100 dark:border-slate-700/50">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0">
+                              {sugItem.image_url ? (
+                                <img src={getImageUrl(sugItem.image_url)} alt={sugItem.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-600"><ImageIcon size={16} /></div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-800 dark:text-slate-100 text-xs truncate">{sugItem.name}</p>
+                              <p className="text-xs font-semibold text-orange-600 dark:text-orange-400 mt-0.5">
+                                {branding.currency?.trim()} {parseFloat(sugItem.price || 0).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => addToCartFromUpsell(sugItem)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm hover:opacity-90 transition shrink-0 flex items-center gap-1"
+                            style={{ backgroundColor: branding.primary_color }}
+                          >
+                            <Plus size={14} /> Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -941,6 +1202,31 @@ export default function CustomerMenuSPA() {
             </motion.div>
         )}
       </AnimatePresence>
+
+      {/* M4 Modals & Drawers */}
+      <CallWaiterModal
+        isOpen={isWaiterModalOpen}
+        onClose={() => setIsWaiterModalOpen(false)}
+        tenantId={tenantData?.user_id}
+        tableId={tableId}
+        branding={branding}
+      />
+
+      <ReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        tenantId={tenantData?.user_id}
+        branding={branding}
+      />
+
+      <UpsellDrawer
+        isOpen={upsellState.isOpen}
+        onClose={() => setUpsellState(prev => ({ ...prev, isOpen: false }))}
+        sourceItemName={upsellState.sourceItemName}
+        suggestedItem={upsellState.suggestedItem}
+        onAddToCart={addToCartFromUpsell}
+        branding={branding}
+      />
     </div>
   );
 }

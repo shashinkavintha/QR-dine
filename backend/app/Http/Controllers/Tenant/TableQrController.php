@@ -25,14 +25,11 @@ class TableQrController extends Controller
         $tenantId = config('tenant.id') ?? auth()->id();
         
         // Enforce max_tables limit
-        $activeSubscription = \App\Models\TenantSubscription::where('tenant_id', $tenantId)
-            ->where('status', 'active')
-            ->with('plan')
-            ->first();
+        $owner = \App\Models\User::with('plan')->find($tenantId);
 
-        if ($activeSubscription && $activeSubscription->plan && $activeSubscription->plan->max_tables !== null) {
+        if ($owner && $owner->plan && $owner->plan->max_tables !== null) {
             $currentTablesCount = TableQr::where('tenant_id', $tenantId)->count();
-            if ($currentTablesCount >= $activeSubscription->plan->max_tables) {
+            if ($currentTablesCount >= $owner->plan->max_tables) {
                 return response()->json(['error' => 'You have reached the maximum number of tables allowed on your current plan. Please upgrade to add more.'], 403);
             }
         }

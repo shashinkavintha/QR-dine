@@ -26,7 +26,7 @@ export default function SettingsPage() {
   
   // Image adjuster state
   const [adjuster, setAdjuster] = useState(null); // { deviceType, imageSrc }
-  const [pendingImages, setPendingImages] = useState({ phone: null, tablet: null, laptop: null });
+  const [pendingImages, setPendingImages] = useState({ phone: null, tablet: null, laptop: null, hero_bg: null });
   const [savingImages, setSavingImages] = useState(false);
 
   useEffect(() => {
@@ -272,13 +272,14 @@ export default function SettingsPage() {
               { key: 'phone', label: 'Phone', urlKey: 'hero_mockup_image_phone_url' },
               { key: 'tablet', label: 'Tablet', urlKey: 'hero_mockup_image_tablet_url' },
               { key: 'laptop', label: 'Laptop', urlKey: 'hero_mockup_image_laptop_url' },
+              { key: 'hero_bg', label: 'Hero Background', urlKey: 'hero_bg_image' },
             ].map(({ key, label, urlKey }) => {
               const pending = pendingImages[key];
               const savedUrl = settings[urlKey];
               const displaySrc = pending
                 ? URL.createObjectURL(pending)
                 : savedUrl
-                ? `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}${savedUrl}`
+                ? (savedUrl.startsWith('http') ? savedUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}${savedUrl}`)
                 : null;
 
               return (
@@ -306,18 +307,22 @@ export default function SettingsPage() {
                       onChange={(e) => {
                         const file = e.target.files[0];
                         if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          // Open adjuster modal immediately
-                          setAdjuster({ deviceType: key, imageSrc: reader.result });
-                        };
-                        reader.readAsDataURL(file);
+                        if (key === 'hero_bg') {
+                          // No adjuster for hero bg, just store directly
+                          setPendingImages(prev => ({ ...prev, [key]: file }));
+                        } else {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setAdjuster({ deviceType: key, imageSrc: reader.result });
+                          };
+                          reader.readAsDataURL(file);
+                        }
                       }}
                     />
                   </label>
 
-                  {/* Adjust button shown when there's a pending or saved image */}
-                  {displaySrc && (
+                  {/* Adjust button shown when there's a pending or saved image, EXCEPT for hero_bg */}
+                  {displaySrc && key !== 'hero_bg' && (
                     <button
                       onClick={async () => {
                         // blob:/data: → local, use directly (no CORS issue)
@@ -372,7 +377,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Upload all pending button */}
-          {(pendingImages.phone || pendingImages.tablet || pendingImages.laptop) && (
+          {(pendingImages.phone || pendingImages.tablet || pendingImages.laptop || pendingImages.hero_bg) && (
             <div className="pt-2">
               <button
                 onClick={async () => {
@@ -382,6 +387,7 @@ export default function SettingsPage() {
                     if (pendingImages.phone) formData.append('hero_mockup_image_phone', pendingImages.phone);
                     if (pendingImages.tablet) formData.append('hero_mockup_image_tablet', pendingImages.tablet);
                     if (pendingImages.laptop) formData.append('hero_mockup_image_laptop', pendingImages.laptop);
+                    if (pendingImages.hero_bg) formData.append('hero_bg_image', pendingImages.hero_bg);
 
                     const res = await fetchWithSuperAdminAuth('/api/super-admin/settings', {
                       method: 'POST',
@@ -389,7 +395,7 @@ export default function SettingsPage() {
                     });
 
                     if (!res.ok) throw new Error('Failed to upload');
-                    setPendingImages({ phone: null, tablet: null, laptop: null });
+                    setPendingImages({ phone: null, tablet: null, laptop: null, hero_bg: null });
                     alert('Images uploaded successfully!');
                     fetchSettings();
                   } catch (error) {

@@ -8,6 +8,7 @@ import { useLenis } from 'lenis/react';
 export default function Navbar() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [loggedInToken, setLoggedInToken] = useState(null);
   const lenis = useLenis();
 
   const scrollToSection = (id) => {
@@ -26,8 +27,27 @@ export default function Navbar() {
       setScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
+
+    // Check auth status
+    const tenantToken = localStorage.getItem('tenant_token');
+    const superAdminToken = localStorage.getItem('super_admin_token');
+    if (tenantToken) setLoggedInToken('tenant');
+    else if (superAdminToken) setLoggedInToken('super_admin');
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleLogout = () => {
+    if (loggedInToken === 'tenant') {
+      localStorage.removeItem('tenant_token');
+      document.cookie = 'tenant_token=; path=/; max-age=0; SameSite=Lax';
+    } else if (loggedInToken === 'super_admin') {
+      localStorage.removeItem('super_admin_token');
+      document.cookie = 'super_admin_token=; path=/; max-age=0; SameSite=Lax';
+    }
+    setLoggedInToken(null);
+    window.location.reload();
+  };
 
   return (
     <div className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'py-2' : 'py-6'}`}>
@@ -42,29 +62,42 @@ export default function Navbar() {
         </div>
         
         {/* Desktop Menu */}
-        <ul className="hidden lg:flex items-center space-x-10 font-semibold text-slate-600">
+        <ul className="hidden lg:flex items-center space-x-10 font-medium text-slate-600">
           <li>
-            <button onClick={() => scrollToSection('features')} className="hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-orange-500 hover:to-rose-500 transition-all">Features</button>
+            <button onClick={() => scrollToSection('features')} className="hover:text-blue-600 transition-colors">Features</button>
           </li>
           <li>
-            <button onClick={() => scrollToSection('how-it-works')} className="hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-orange-500 hover:to-rose-500 transition-all">How it Works</button>
+            <button onClick={() => scrollToSection('how-it-works')} className="hover:text-blue-600 transition-colors">How it Works</button>
           </li>
           <li>
-            <button onClick={() => scrollToSection('pricing')} className="hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-orange-500 hover:to-rose-500 transition-all">Pricing</button>
+            <button onClick={() => scrollToSection('pricing')} className="hover:text-blue-600 transition-colors">Pricing</button>
           </li>
           <li>
-            <button onClick={() => scrollToSection('contact')} className="hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-orange-500 hover:to-rose-500 transition-all">Contact</button>
+            <button onClick={() => scrollToSection('contact')} className="hover:text-blue-600 transition-colors">Contact</button>
           </li>
         </ul>
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-6">
-          <Link href="/login" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">
-            Login
-          </Link>
-          <Link href="/register" className="bg-slate-900 text-white px-6 py-2.5 rounded-full font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 duration-300">
-            Start 14-Day Free Trial
-          </Link>
+          {loggedInToken ? (
+            <>
+              <button onClick={handleLogout} className="text-slate-600 hover:text-red-500 font-bold transition-colors">
+                Logout
+              </button>
+              <Link href={loggedInToken === 'super_admin' ? "/super-admin" : "/dashboard"} className="bg-orange-500 text-white px-6 py-2.5 rounded-full font-bold hover:bg-orange-600 transition-colors shadow-sm">
+                Dashboard
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="text-slate-600 hover:text-slate-900 font-bold transition-colors">
+                Merchant Login
+              </Link>
+              <Link href="/register" className="bg-orange-500 text-white px-6 py-2.5 rounded-full font-bold hover:bg-orange-600 transition-colors shadow-sm">
+                Start Free Trial
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Hamburger Icon */}
@@ -81,12 +114,25 @@ export default function Navbar() {
             <button className="text-lg font-bold text-slate-700" onClick={() => { scrollToSection('pricing'); setIsNavOpen(false); }}>Pricing</button>
             <button className="text-lg font-bold text-slate-700" onClick={() => { scrollToSection('contact'); setIsNavOpen(false); }}>Contact</button>
             <div className="flex flex-col w-10/12 gap-4 pt-6 border-t border-gray-200">
-              <Link href="/login" className="block w-full text-center py-3 text-slate-600 font-bold border border-slate-200 rounded-xl hover:bg-slate-50" onClick={() => setIsNavOpen(false)}>
-                Login
-              </Link>
-              <Link href="/register" className="block w-full text-center py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg shadow-slate-900/20" onClick={() => setIsNavOpen(false)}>
-                Start 14-Day Free Trial
-              </Link>
+              {loggedInToken ? (
+                <>
+                  <Link href={loggedInToken === 'super_admin' ? "/super-admin" : "/dashboard"} className="block w-full text-center py-3 bg-orange-500 text-white font-bold rounded-xl shadow-lg shadow-orange-500/20" onClick={() => setIsNavOpen(false)}>
+                    Dashboard
+                  </Link>
+                  <button onClick={() => { handleLogout(); setIsNavOpen(false); }} className="block w-full text-center py-3 text-red-500 font-bold border border-red-200 rounded-xl hover:bg-red-50">
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="block w-full text-center py-3 text-slate-600 font-bold border border-slate-200 rounded-xl hover:bg-slate-50" onClick={() => setIsNavOpen(false)}>
+                    Login
+                  </Link>
+                  <Link href="/register" className="block w-full text-center py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg shadow-slate-900/20" onClick={() => setIsNavOpen(false)}>
+                    Start 14-Day Free Trial
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}

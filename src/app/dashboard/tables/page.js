@@ -61,7 +61,8 @@ export default function TablesPage() {
         fetchTablesAndSettings();
         toast.success("Table added successfully");
       } else {
-        toast.error("Failed to add table");
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to add table");
       }
     } catch (e) {
       console.error(e);

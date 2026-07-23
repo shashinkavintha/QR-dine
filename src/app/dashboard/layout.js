@@ -19,7 +19,9 @@ import {
   Moon,
   Sun,
   Users,
-  History
+  History,
+  Star,
+  Sparkles
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from 'next-themes';
@@ -43,6 +45,7 @@ export default function TenantDashboardLayout({ children }) {
   const [daysLeft, setDaysLeft] = useState(0);
   const [userRole, setUserRole] = useState(null);
   const [userPermissions, setUserPermissions] = useState([]);
+  const [hasAnalytics, setHasAnalytics] = useState(false);
 
   // Volume state
   const [volume, setVolume] = useState(1);
@@ -158,6 +161,7 @@ export default function TenantDashboardLayout({ children }) {
           setDaysLeft(data.user.days_left);
           setUserRole(data.user.role || 'tenant');
           setUserPermissions(data.user.permissions || []);
+          setHasAnalytics(data.user.has_analytics || false);
         }
       } catch (e) {
         console.error(e);
@@ -215,6 +219,8 @@ export default function TenantDashboardLayout({ children }) {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Orders', href: '/dashboard/orders', icon: ShoppingBag, badge: ordersCount, permission: 'view_orders' },
     { name: 'Menu Management', href: '/dashboard/menu', icon: UtensilsCrossed, permission: 'manage_menu' },
+    { name: 'Upsell Rules', href: '/dashboard/upsell', icon: Sparkles, permission: 'manage_upsells' },
+    { name: 'Reviews', href: '/dashboard/reviews', icon: Star, permission: 'manage_reviews' },
     { name: 'Tables & QRs', href: '/dashboard/tables', icon: ScanLine, permission: 'manage_settings' },
     { name: 'Branding & Theme', href: '/dashboard/branding', icon: Palette, permission: 'manage_settings' },
     { name: 'Staff & Roles', href: '/dashboard/staff', icon: Users, permission: 'manage_staff' },
@@ -225,6 +231,11 @@ export default function TenantDashboardLayout({ children }) {
   ];
 
   const navItems = allNavItems.filter(item => {
+    // If it's the analytics tab, check the plan limit first
+    if (item.name === 'Analytics') {
+      if (!hasAnalytics) return false;
+    }
+
     if (userRole === 'tenant') return true;
     if (!item.permission) return true;
     return userPermissions.includes(item.permission);
@@ -239,7 +250,7 @@ export default function TenantDashboardLayout({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans text-slate-800 dark:text-slate-100">
+    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 flex font-sans text-slate-800 dark:text-slate-100">
       <audio id="notification-sound" src="/notification.wav" preload="auto"></audio>
       
       {/* Mobile Sidebar Overlay */}
@@ -321,7 +332,7 @@ export default function TenantDashboardLayout({ children }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-screen min-w-0">
+      <main className="flex-1 flex flex-col h-screen min-w-0">
         
         {/* Top Header */}
         <header className="h-16 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">

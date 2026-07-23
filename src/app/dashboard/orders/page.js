@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { fetchWithAuth } from '@/utils/api';
-import { Loader2, Clock, ChefHat, CheckCircle2, X, Printer } from 'lucide-react';
+import { Loader2, Clock, ChefHat, CheckCircle2, X, Printer, Bell, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
+import WaiterNotificationWidget from '@/components/dashboard/WaiterNotificationWidget';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
+  const [waiterRequests, setWaiterRequests] = useState([]);
+  const [resolvingIds, setResolvingIds] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [echoInstance, setEchoInstance] = useState(null);
@@ -27,8 +30,46 @@ export default function OrdersPage() {
     }
   };
 
+  const fetchWaiterRequests = async () => {
+    try {
+      const res = await fetchWithAuth('/api/tenant/waiter-requests?status=pending');
+      if (res.ok) {
+        const data = await res.json();
+        const pending = Array.isArray(data) ? data.filter(r => r.status === 'pending') : [];
+        setWaiterRequests(pending);
+      }
+    } catch (e) {
+      console.error('Failed to fetch waiter requests:', e);
+    }
+  };
+
+  const completeWaiterRequest = async (id) => {
+    setResolvingIds(prev => ({ ...prev, [id]: true }));
+    try {
+      const res = await fetchWithAuth(`/api/tenant/waiter-requests/${id}/complete`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        toast.success('Waiter request marked as complete');
+        setWaiterRequests(prev => prev.filter(r => r.id !== id));
+      } else {
+        toast.error('Failed to complete waiter request');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to complete waiter request');
+    } finally {
+      setResolvingIds(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
   useEffect(() => {
     fetchOrders();
+    fetchWaiterRequests();
+
+    const interval = setInterval(() => {
+      fetchWaiterRequests();
+    }, 10000);
 
     const setupEcho = async () => {
       const userRes = await fetchWithAuth('/api/user');
@@ -51,6 +92,20 @@ export default function OrdersPage() {
           })
           .listen('.App\\Events\\OrderStatusUpdated', (e) => {
             setOrders(prev => prev.map(o => o.id === e.order.id ? e.order : o));
+          })
+          .listen('.App\\Events\\WaiterRequestCreated', (e) => {
+            fetchWaiterRequests();
+            const req = e.waiterRequest || e;
+            const tableStr = req.table_number ? `Table ${req.table_number}` : 'A table';
+            const typeStr = req.request_type ? req.request_type.toUpperCase() : 'WAITER';
+            toast.error(`🔔 ${tableStr} requested ${typeStr}!`, { duration: 6000 });
+          })
+          .listen('.WaiterRequestCreated', (e) => {
+            fetchWaiterRequests();
+            const req = e.waiterRequest || e;
+            const tableStr = req.table_number ? `Table ${req.table_number}` : 'A table';
+            const typeStr = req.request_type ? req.request_type.toUpperCase() : 'WAITER';
+            toast.error(`🔔 ${tableStr} requested ${typeStr}!`, { duration: 6000 });
           });
       });
     };
@@ -58,6 +113,7 @@ export default function OrdersPage() {
     setupEcho();
 
     return () => {
+      clearInterval(interval);
       if (echoInstance) {
         echoInstance.disconnect();
       }
@@ -229,6 +285,13 @@ export default function OrdersPage() {
   return (
     <>
     <div className="space-y-6 print:hidden">
+      {/* Waiter Calls Notification Panel */}
+      <WaiterNotificationWidget
+        waiterRequests={waiterRequests}
+        resolvingIds={resolvingIds}
+        onCompleteRequest={completeWaiterRequest}
+      />
+
       <div>
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Live Orders</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">Manage incoming orders from tables.</p>

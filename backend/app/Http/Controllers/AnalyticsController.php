@@ -16,6 +16,11 @@ class AnalyticsController extends Controller
         $tenantId = auth('api')->id();
         $dateFilter = $request->input('date_filter', 'today'); // today, this_week, this_month, all_time
 
+        $owner = \App\Models\User::with('plan')->find($tenantId);
+        if (!$owner->plan || !$owner->plan->has_analytics) {
+            return response()->json(['message' => 'Your current plan does not include Advanced Analytics. Please upgrade to access this feature.'], 403);
+        }
+
         // Build Cache Key
         $cacheKey = "analytics_dashboard_{$tenantId}_{$dateFilter}";
 

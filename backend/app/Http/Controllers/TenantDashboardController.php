@@ -67,6 +67,7 @@ class TenantDashboardController extends Controller
                 'is_expired' => $computedStatus === 'expired',
                 'role'       => $currentUser->role,
                 'permissions'=> $permissions,
+                'has_analytics'=> $owner->plan ? (bool)$owner->plan->has_analytics : false,
             ]
         ]);
     }
@@ -76,11 +77,12 @@ class TenantDashboardController extends Controller
         $request->validate([
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:2048',
             'banner' => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:2048',
+            'google_review_url' => 'nullable|url|string|max:1000',
         ]);
 
         $settings = TenantSetting::where('user_id', config('tenant.id'))->first();
         
-        $data = $request->only(['restaurant_name', 'primary_color', 'secondary_color', 'font_family', 'slug', 'currency', 'theme_mode']);
+        $data = $request->only(['restaurant_name', 'primary_color', 'secondary_color', 'font_family', 'slug', 'currency', 'theme_mode', 'google_review_url']);
         
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', config('filesystems.default'));
@@ -169,9 +171,8 @@ class TenantDashboardController extends Controller
 
         // Enforce max_menu_items limit
         $owner = \App\Models\User::with('plan')->find($tenantId);
-        $isPaidActive = in_array($owner->plan_status, ['active', 'upgraded']) && $owner->plan_expires_at && \Carbon\Carbon::parse($owner->plan_expires_at)->isFuture();
 
-        if ($isPaidActive && $owner->plan && $owner->plan->max_menu_items !== null) {
+        if ($owner && $owner->plan && $owner->plan->max_menu_items !== null) {
             $currentItemsCount = MenuItem::where('tenant_id', $tenantId)->count();
             if ($currentItemsCount >= $owner->plan->max_menu_items) {
                 return response()->json(['error' => 'You have reached the maximum number of menu items allowed on your current plan. Please upgrade to add more.'], 403);

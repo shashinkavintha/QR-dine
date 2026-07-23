@@ -92,7 +92,7 @@ Route::middleware(['auth:api', \App\Http\Middleware\SuperAdminMiddleware::class]
 });
 
 Route::get('/system-settings/public', function () {
-    $keys = ['enable_bank_transfer', 'bank_name', 'bank_account_name', 'bank_account_number', 'bank_branch', 'enable_payhere'];
+    $keys = ['enable_bank_transfer', 'bank_name', 'bank_account_name', 'bank_account_number', 'bank_branch', 'enable_payhere', 'hero_bg_image'];
     $settings = \App\Models\SystemSetting::whereIn('key', $keys)->pluck('value', 'key');
     return response()->json($settings);
 });
@@ -105,6 +105,7 @@ Route::middleware(['auth:api', \App\Http\Middleware\TenantMiddleware::class, \Ap
     // Settings & Branding
     Route::get('/settings', [\App\Http\Controllers\TenantDashboardController::class, 'getSettings']);
     Route::post('/settings', [\App\Http\Controllers\TenantDashboardController::class, 'updateSettings']);
+    Route::put('/settings', [\App\Http\Controllers\TenantDashboardController::class, 'updateSettings']);
     
     // Billing & Subscriptions
     Route::post('/subscriptions/bank-transfer', [\App\Http\Controllers\BankTransferController::class, 'uploadSlip']);
@@ -153,6 +154,26 @@ Route::middleware(['auth:api', \App\Http\Middleware\TenantMiddleware::class, \Ap
     
     // Analytics
     Route::get('/analytics/dashboard', [\App\Http\Controllers\AnalyticsController::class, 'getDashboardStats'])->middleware('permission:view_analytics');
+
+    // Waiter Requests
+    Route::get('/waiter-requests', [\App\Http\Controllers\TenantWaiterRequestController::class, 'index']);
+    Route::put('/waiter-requests/{id}/complete', [\App\Http\Controllers\TenantWaiterRequestController::class, 'complete']);
+    Route::post('/waiter-requests/{id}/complete', [\App\Http\Controllers\TenantWaiterRequestController::class, 'complete']);
+    Route::put('/waiter-requests/{id}/resolve', [\App\Http\Controllers\TenantWaiterRequestController::class, 'complete']);
+    Route::post('/waiter-requests/{id}/resolve', [\App\Http\Controllers\TenantWaiterRequestController::class, 'complete']);
+
+    // Reviews
+    Route::get('/reviews', [\App\Http\Controllers\TenantReviewController::class, 'index'])->middleware('permission:manage_reviews');
+    Route::get('/reviews/complaints', [\App\Http\Controllers\TenantReviewController::class, 'index'])->middleware('permission:manage_reviews');
+    Route::put('/reviews/{id}/read', [\App\Http\Controllers\TenantReviewController::class, 'markAsRead'])->middleware('permission:manage_reviews');
+    Route::post('/reviews/{id}/read', [\App\Http\Controllers\TenantReviewController::class, 'markAsRead'])->middleware('permission:manage_reviews');
+    Route::post('/reviews/complaints/{id}/read', [\App\Http\Controllers\TenantReviewController::class, 'markAsRead'])->middleware('permission:manage_reviews');
+    Route::put('/reviews/complaints/{id}/read', [\App\Http\Controllers\TenantReviewController::class, 'markAsRead'])->middleware('permission:manage_reviews');
+
+    // Upsell Rules
+    Route::get('/upsell-rules', [\App\Http\Controllers\TenantUpsellRuleController::class, 'index'])->middleware('permission:manage_upsells');
+    Route::post('/upsell-rules', [\App\Http\Controllers\TenantUpsellRuleController::class, 'store'])->middleware('permission:manage_upsells');
+    Route::delete('/upsell-rules/{id}', [\App\Http\Controllers\TenantUpsellRuleController::class, 'destroy'])->middleware('permission:manage_upsells');
 });
 
 // -----------------------------------------------------
@@ -163,6 +184,13 @@ Route::get('/menu/{slug}', [\App\Http\Controllers\PublicMenuController::class, '
 Route::get('/r/{hash}', [\App\Http\Controllers\PublicController::class, 'resolveQr'])->middleware('throttle:60,1');
 Route::post('/public/orders', [\App\Http\Controllers\PublicController::class, 'placeOrder']);
 Route::get('/public/orders/{id}', [\App\Http\Controllers\PublicController::class, 'getOrderStatus']);
+
+// Milestone 2 Public Routes
+Route::post('/public/waiter-requests', [\App\Http\Controllers\PublicWaiterRequestController::class, 'store']);
+Route::post('/public/translate', [\App\Http\Controllers\PublicTranslationController::class, 'translate']);
+Route::post('/public/reviews', [\App\Http\Controllers\PublicReviewController::class, 'store']);
+Route::get('/public/upsell', [\App\Http\Controllers\PublicUpsellController::class, 'index']);
+Route::get('/public/upsell-suggestions', [\App\Http\Controllers\PublicUpsellController::class, 'index']);
 
 Route::get('/plans', [\App\Http\Controllers\SubscriptionController::class, 'getPlans']);
 

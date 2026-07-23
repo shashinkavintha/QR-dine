@@ -20,7 +20,7 @@ export const metadata = {
   },
 };
 
-import SmoothScroll from '@/components/SmoothScroll';
+
 import Script from 'next/script';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -35,9 +35,7 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <SmoothScroll>
             {children}
-          </SmoothScroll>
           <Toaster position="top-right" />
         </ThemeProvider>
         <Script src="https://www.payhere.lk/lib/payhere.js" strategy="beforeInteractive" />
