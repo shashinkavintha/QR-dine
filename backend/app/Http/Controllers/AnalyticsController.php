@@ -17,7 +17,7 @@ class AnalyticsController extends Controller
         $dateFilter = $request->input('date_filter', 'today'); // today, this_week, this_month, all_time
 
         $owner = \App\Models\User::with('plan')->find($tenantId);
-        if (!$owner->plan || !$owner->plan->has_analytics) {
+        if ($owner->role !== 'super_admin' && (!$owner->plan || !$owner->plan->has_analytics)) {
             return response()->json(['message' => 'Your current plan does not include Advanced Analytics. Please upgrade to access this feature.'], 403);
         }
 
