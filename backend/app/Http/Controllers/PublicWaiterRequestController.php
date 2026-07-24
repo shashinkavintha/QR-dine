@@ -35,7 +35,11 @@ class PublicWaiterRequestController extends Controller
 
         $waiterRequest = WaiterRequest::create($validated);
 
-        event(new WaiterRequestCreated($waiterRequest));
+        try {
+            event(new WaiterRequestCreated($waiterRequest));
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast waiter request: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Waiter request created successfully',

@@ -161,7 +161,11 @@ class PublicController extends Controller
             // Fetch the fully loaded order
             $order = Order::with('items')->find($order->id);
             
-            event(new \App\Events\OrderCreated($order));
+            try {
+                event(new \App\Events\OrderCreated($order));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to broadcast order creation: ' . $e->getMessage());
+            }
 
             DB::commit();
 
