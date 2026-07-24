@@ -15,11 +15,32 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Seed Plans
+        $this->call(PlanSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Seed Default Permissions
+        $permissions = [
+            'manage_menu',
+            'view_orders',
+            'manage_staff',
+            'view_analytics',
+            'manage_settings',
+            'manage_upsells',
+            'manage_reviews'
+        ];
+
+        foreach ($permissions as $name) {
+            \App\Models\Permission::firstOrCreate(['name' => $name]);
+        }
+
+        // Seed Super Admin
+        \App\Models\User::firstOrCreate(
+            ['email' => 'shashinkavintha@gmail.com'],
+            [
+                'name' => 'Shashin Kavintha', // Super Admin
+                'password' => bcrypt('200323612298@Shashin'), // Fallback secure password
+                'role' => 'super_admin'
+            ]
+        );
     }
 }

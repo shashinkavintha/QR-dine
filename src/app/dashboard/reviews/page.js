@@ -72,9 +72,15 @@ export default function ComplaintsReviewsPage() {
 
   const filteredReviews = reviews.filter(r => {
     const matchesStatus = filterStatus === 'all' || r.status === filterStatus;
+    
+    if (!searchTerm) {
+      return matchesStatus;
+    }
+
     const matchesSearch = 
       (r.customer_name && r.customer_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (r.comment && r.comment.toLowerCase().includes(searchTerm.toLowerCase()));
+    
     return matchesStatus && matchesSearch;
   });
 

@@ -152,7 +152,7 @@ export default function ReviewModal({ isOpen, onClose, tenantId, branding }) {
                 </div>
 
                 {/* Conditional View */}
-                {rating >= 1 && rating <= 3 && (
+                {rating >= 1 && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -172,7 +172,7 @@ export default function ReviewModal({ isOpen, onClose, tenantId, branding }) {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
-                        Please tell us what went wrong
+                        {rating >= 4 ? 'Leave a comment (optional)' : 'Please tell us what went wrong'}
                       </label>
                       <textarea
                         value={comment}
@@ -185,17 +185,7 @@ export default function ReviewModal({ isOpen, onClose, tenantId, branding }) {
                   </motion.div>
                 )}
 
-                {rating >= 4 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-center"
-                  >
-                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                      We appreciate your support! Click below to submit your rating.
-                    </p>
-                  </motion.div>
-                )}
+
 
                 <button
                   type="submit"

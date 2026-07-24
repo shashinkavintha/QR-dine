@@ -34,7 +34,7 @@ class PublicReviewController extends Controller
         }
 
         // High rating (4 or 5 star)
-        $validated['status'] = 'read';
+        $validated['status'] = 'unread';
         $review = Review::create($validated);
 
         $response = [

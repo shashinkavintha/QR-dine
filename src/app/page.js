@@ -53,7 +53,7 @@ export default function Home() {
               <ul className="space-y-5 font-medium">
                 <li className="flex items-start gap-4">
                   <Mail size={22} className="text-orange-500 shrink-0 mt-0.5" />
-                  <span className="hover:text-orange-500 transition-colors cursor-pointer">support@qrsaas.com</span>
+                  <a href="mailto:contact@qrdine.proximero.com" className="hover:text-orange-500 transition-colors cursor-pointer">contact@qrdine.proximero.com</a>
                 </li>
                 <li className="flex items-start gap-4">
                   <Phone size={22} className="text-orange-500 shrink-0 mt-0.5" />
