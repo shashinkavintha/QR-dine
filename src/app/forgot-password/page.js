@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChefHat, ArrowLeft, Loader2, CheckCircle2, Lock, KeyRound } from 'lucide-react';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 import toast from 'react-hot-toast';
 
 export default function ForgotPasswordPage() {
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
     setError('');
 
     try {
-      const res = await fetch(`${API_URL}/forgot-password/send-otp`, {
+      const res = await fetch(`${API_URL}/api/forgot-password/send-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/forgot-password/reset`, {
+      const res = await fetch(`${API_URL}/api/forgot-password/reset`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
