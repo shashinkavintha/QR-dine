@@ -335,7 +335,7 @@ export default function BrandingSettingsPage() {
                   <div key={item.id} className={`p-3 rounded-2xl shadow-sm border flex gap-3 ${themeMode === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
                     <div className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 flex items-center justify-center ${themeMode === 'dark' ? 'bg-slate-800' : 'bg-slate-100'}`}>
                        {item.image_url ? (
-                         <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}${item.image_url}`} className="w-full h-full object-cover" />
+                        <img src={item.image_url.startsWith('http') || item.image_url.startsWith('blob:') ? item.image_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}${item.image_url}`} className="w-full h-full object-cover" />
                        ) : (
                          <ImageIcon size={16} className={themeMode === 'dark' ? 'text-slate-600' : 'text-slate-300'} />
                        )}
